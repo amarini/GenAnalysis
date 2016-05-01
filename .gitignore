@@ -1,0 +1,19 @@
+## python
+*.pyc
+__init__.py
+
+## C/C++
+*.d
+*.o
+*.so
+
+## vim / emacs
+.*swp
+~*
+
+## pdf/png
+*pdf
+*png
+
+## ROOT
+*.root
