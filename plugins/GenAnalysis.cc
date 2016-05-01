@@ -89,6 +89,7 @@ class GenAnalysis : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
       map<string, float> container_;
 
       inline void Branch(string name){ tree_->Branch( name.c_str(), &container_[name],(name+"/F").c_str());}
+      inline void ClearContainer(){ for(auto& p : container_ ) p.second=-999.;}
 
       // --- save all the w
       vector<double> *weights{0};
@@ -114,6 +115,7 @@ class GenAnalysis : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 GenAnalysis::GenAnalysis(const edm::ParameterSet& iConfig) :
 	gp_token ( consumes<edm::View<reco::GenParticle> >( edm::InputTag("genParticles")) ),
 	info_token ( consumes< GenEventInfoProduct >( edm::InputTag("source","generator")) ) // Usually only generetor
+	//runinfo_token ( consumes<GenRunInfoProduct,edm::InRun>(iConfig.getParameter<edm::InputTag>("") ) )
 
 {
    //now do what ever initialization is needed
@@ -161,6 +163,7 @@ void
 GenAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
+   ClearContainer();
 
    iEvent.getByToken(gp_token,gp_handle); 
    iEvent.getByToken(info_token, info_handle);
