@@ -63,6 +63,24 @@ class GenAnalysis : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 
       static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
+      class Lepton{
+    		public:  
+			float pt{-1};
+			float eta{0};
+			float phi{0};
+			float m{0};
+			int pdgid{0};
+		const inline bool operator <(const Lepton &x){ 
+			if (pt < x.pt) return false; if (pt>x.pt) return true; // increasing pt order
+			if (eta < x.eta) return true; if (eta>x.eta) return false;
+			if (phi < x.phi) return true; if (phi>x.phi) return false;
+			if (pdgid < x.pdgid) return true; if (pdgid>x.pdgid) return false;
+			if (m < x.m) return true; if (m>x.m) return false;
+			return false;
+		}
+
+      };
+
 
    private:
       virtual void beginJob() override;
@@ -163,7 +181,6 @@ void
 GenAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
-   ClearContainer();
 
    iEvent.getByToken(gp_token,gp_handle); 
    iEvent.getByToken(info_token, info_handle);
@@ -172,7 +189,8 @@ GenAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
    if ( not info_handle.isValid() ) cout<<"[GenAnalysis]::[analyze]::[ERROR] info_handle is not valid"<<endl;
 
    // reset
-   for (auto& x : container_ ) x.second=-1;
+   //for (auto& x : container_ ) x.second=-1;
+   ClearContainer();
 
    container_["weight"] = info_handle->weights()[0];
 
@@ -180,21 +198,47 @@ GenAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
    weights->clear();
    for(const auto&w: info_handle->weights()) weights->push_back(w);
 
+   vector<Lepton> myLeptons;
    int n=1;
    for (const auto & gp : *gp_handle) {
 
 	   	if (  (abs(gp.pdgId()) == 11  or abs(gp.pdgId()) == 13)
 		       and gp.status() == 1
-		       and n<=2
+		       //and n<=2
 		   ){
-			container_[ Form("pt%d",n) ]  =  gp.pt();
-			container_[ Form("eta%d",n) ] =  gp.eta();
-			container_[ Form("phi%d",n) ] =  gp.phi();
-			container_[ Form("m%d",n) ]   =  gp.mass();
-			container_[ Form("pdgId%d",n) ]   =  gp.pdgId();
+			Lepton aLepton;
+			aLepton.pt = gp.pt();
+			aLepton.eta = gp.eta();
+			aLepton.phi = gp.phi();
+			aLepton.m = gp.mass();
+			aLepton.pdgid = gp.pdgId();
+			myLeptons.push_back(aLepton);
 			++n;
 		}
-   	}
+   	}// gen particles
+
+   // sort and fill
+   sort(myLeptons.begin(),myLeptons.end() );
+
+   n=1;
+   for(unsigned i=0;i<myLeptons.size() ;++i)
+   {
+	// must be opposite sign same flavor, leading pt lepton is chosen
+	auto& l = myLeptons[i];
+	if (n>1 and  (int(container_[ "pdgId1"]) * l.pdgid != -13 *13  and int(container_[ "pdgId1"]) * l.pdgid != -11 *11) ) 
+		{
+		//cout <<"Lepton "<<i<<" fails the 2nd requirements"<<int(container_[ "pdgId1"])<< " "<<l.pdgid  <<endl;
+		continue;
+		} // OS SF
+	if (n>2 ) break;
+   	container_[ Form("pt%d",n) ]  =  l.pt;
+   	container_[ Form("eta%d",n) ] =  l.eta;
+   	container_[ Form("phi%d",n) ] =  l.phi;
+   	container_[ Form("m%d",n) ]   =  l.m;
+   	container_[ Form("pdgId%d",n) ]   =  l.pdgid;
+	++n;
+   }
+
    if (n > 2)
    {
    TLorentzVector l1 , l2;
@@ -206,7 +250,18 @@ GenAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
    container_["phiZ"] = Z.Phi();
    container_["mZ"] = Z.M();
    }
+   //else 
+   //{
+   //        cout<<"Not found the Z:"<<endl;
+   //        cout <<"NLeptons="<<myLeptons.size()<<endl;
+   //        for(auto & l : myLeptons)
+   //     	   cout << "* pt="<<l.pt<<", eta="<<l.eta<<", phi="<<l.phi<<", pdgid="<<l.pdgid<<endl;
+   //}
 
+   // --------------------------------------------------------------------------------
+   //                                    FILL 
+   // --------------------------------------------------------------------------------
+   // always fill!
    tree_->Fill();
 
 }

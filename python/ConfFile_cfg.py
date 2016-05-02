@@ -1,6 +1,10 @@
 import FWCore.ParameterSet.Config as cms
 
-from python.filelist import fileList
+#from python.filelist import fileList
+
+### do not remove the line below!
+###FILELIST###
+
 
 process = cms.Process("Demo")
 
@@ -20,7 +24,7 @@ process.source = cms.Source("PoolSource",
 
 process.TFileService = cms.Service("TFileService",
 		        closeFileFast = cms.untracked.bool(False),
-		        fileName = cms.string("Ntuples.root"),
+		        fileName = cms.string("GenevaNtuples.root"),
 		        )
 
 
