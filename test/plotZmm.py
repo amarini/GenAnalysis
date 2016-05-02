@@ -31,6 +31,10 @@ hLepNegPt=ROOT.TH1D("LepNegPt","LepNegPt",len(LepNegPtBins)-1,LepNegPtBins)
 hLepPosPt=ROOT.TH1D("LepPosPt","LepPosPt",len(LepPosPtBins)-1,LepPosPtBins)
 hZRap=ROOT.TH1D("ZRap","ZRap",24,0,2.4)
 
+hList=[ hZPt,hZRap,hPhiStar,hLep1Pt,hLep2Pt,hLepPosPt,hLepNegPt ]
+for h in hList:
+	h.Sumw2()
+
 def DeltaPhi(phi1,phi2):
 	dphi=phi1-phi2
 	while dphi > math.pi : dphi -= 2*math.pi
@@ -45,7 +49,13 @@ sw.Start()
 for ientry in range(0,nentries):
 	if ientry % 10000 == 1:
 		sw.Stop()
-		print "\rDoing entry %d of %d (%.1fs) \t= %.1f%% \tleft %.0fs                  "%(ientry,nentries,sw.RealTime(),float(ientry)/nentries*100,(nentries-ientry) *sw.RealTime()/1e4),
+		seconds=(nentries-ientry) *sw.RealTime()/1e4
+		time=""
+		if seconds > 60: 
+			time += "%dm "%(int(seconds)/60)
+			seconds -= (int(seconds)/60) *60
+		time += "%ds"%int(seconds) 
+		print "\rDoing entry %d of %d (%.1fs) \t= %.1f%% \tleft %s                  "%(ientry,nentries,sw.RealTime(),float(ientry)/nentries*100,time),
 		sys.stdout.flush()
 		sw.Start()
 	tree.GetEntry(ientry)
@@ -84,11 +94,13 @@ for ientry in range(0,nentries):
 		hLepNegPt.Fill(tree.pt2,tree.weight)
 		hLepPosPt.Fill(tree.pt1,tree.weight)
 
-
+print 
+print "---------------------------------------------------"
 print "Sum=",Sum,"nentries=",nentries,"xsec=",Sum/nentries
 print "Fiducial xsec=",Fiducial/nentries
+print "---------------------------------------------------"
 
-for h in [ hZPt,hZRap,hPhiStar,hLep1Pt,hLep2Pt,hLepPosPt,hLepNegPt ]:
+for h in hList: 
 	h.Scale(1./float(nentries))
 	g=ROOT.TGraphAsymmErrors()
 	g.SetName(h.GetName() + "_stat")
