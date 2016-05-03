@@ -117,9 +117,13 @@ for h in hList:
 	g.Write()
 	h.Write()
 
-
+## Save Additional informations
 S=ROOT.TNamed("Sum","%e"%Sum)
 S.Write()
+xsec=ROOT.TNamed("xsec","%e"%(Sum/nentries))
+xsec.Write()
+Fid=ROOT.TNamed("fiducial","%e"%(Fiducial/nentries))
+Fid.Write()
 out.Close()
 f.Close()
 #h.Scale(1./Sum)
