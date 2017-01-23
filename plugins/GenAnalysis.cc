@@ -70,14 +70,14 @@ class GenAnalysis : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 			float phi{0};
 			float m{0};
 			int pdgid{0};
-		const inline bool operator <(const Lepton &x){ 
-			if (pt < x.pt) return false; if (pt>x.pt) return true; // increasing pt order
-			if (eta < x.eta) return true; if (eta>x.eta) return false;
-			if (phi < x.phi) return true; if (phi>x.phi) return false;
-			if (pdgid < x.pdgid) return true; if (pdgid>x.pdgid) return false;
-			if (m < x.m) return true; if (m>x.m) return false;
-			return false;
-		}
+			const inline bool operator <(const Lepton &x) const{ 
+				if (pt < x.pt) return false; if (pt>x.pt) return true; // increasing pt order
+				if (eta < x.eta) return true; if (eta>x.eta) return false;
+				if (phi < x.phi) return true; if (phi>x.phi) return false;
+				if (pdgid < x.pdgid) return true; if (pdgid>x.pdgid) return false;
+				if (m < x.m) return true; if (m>x.m) return false;
+				return false;
+			}
 
       };
 
@@ -132,7 +132,8 @@ class GenAnalysis : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 //
 GenAnalysis::GenAnalysis(const edm::ParameterSet& iConfig) :
 	gp_token ( consumes<edm::View<reco::GenParticle> >( edm::InputTag("genParticles")) ),
-	info_token ( consumes< GenEventInfoProduct >( edm::InputTag("source","generator")) ) // Usually only generetor
+	//info_token ( consumes< GenEventInfoProduct >( edm::InputTag("source","generator")) ) // Usually only generetor
+	info_token ( consumes< GenEventInfoProduct >( edm::InputTag("source","")) ) // Usually only generetor
 	//runinfo_token ( consumes<GenRunInfoProduct,edm::InRun>(iConfig.getParameter<edm::InputTag>("") ) )
 
 {
