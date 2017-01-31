@@ -132,8 +132,7 @@ class GenAnalysis : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 //
 GenAnalysis::GenAnalysis(const edm::ParameterSet& iConfig) :
 	gp_token ( consumes<edm::View<reco::GenParticle> >( edm::InputTag("genParticles")) ),
-	//info_token ( consumes< GenEventInfoProduct >( edm::InputTag("source","generator")) ) // Usually only generetor
-	info_token ( consumes< GenEventInfoProduct >( edm::InputTag("source","")) ) // Usually only generetor
+	info_token ( consumes< GenEventInfoProduct >( edm::InputTag("source","generator")) ) // Usually only generetor
 	//runinfo_token ( consumes<GenRunInfoProduct,edm::InRun>(iConfig.getParameter<edm::InputTag>("") ) )
 
 {
@@ -207,11 +206,23 @@ GenAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 		       and gp.status() == 1
 		       //and n<=2
 		   ){
+			TLorentzVector dressed; dressed.SetPtEtaPhiM(gp.pt(),gp.eta(),gp.phi(),gp.mass());
+   			for (const auto & gp2 : *gp_handle) {
+	   			if (  abs(gp2.pdgId()) == 22 and gp2.status() == 1 )
+				{
+				TLorentzVector x; x.SetPtEtaPhiM(gp2.pt(),gp2.eta(),gp2.phi(),gp2.mass());
+				if (x.DeltaR(dressed) <0.1) dressed+=x;
+				}
+			}
 			Lepton aLepton;
-			aLepton.pt = gp.pt();
-			aLepton.eta = gp.eta();
-			aLepton.phi = gp.phi();
-			aLepton.m = gp.mass();
+			//aLepton.pt = gp.pt();
+			//aLepton.eta = gp.eta();
+			//aLepton.phi = gp.phi();
+			//aLepton.m = gp.mass();
+			aLepton.pt = dressed.Pt();
+			aLepton.eta = dressed.Eta();
+			aLepton.phi = dressed.Phi();
+			aLepton.m = dressed.M();
 			aLepton.pdgid = gp.pdgId();
 			myLeptons.push_back(aLepton);
 			++n;

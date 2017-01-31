@@ -31,6 +31,11 @@ hLepNegPt=ROOT.TH1D("LepNegPt","LepNegPt",len(LepNegPtBins)-1,LepNegPtBins)
 hLepPosPt=ROOT.TH1D("LepPosPt","LepPosPt",len(LepPosPtBins)-1,LepPosPtBins)
 hZRap=ROOT.TH1D("ZRap","ZRap",24,0,2.4)
 
+# based on the weights
+NW=11
+vZPt=[ ROOT.TH1D("ZPt_%d"%x,"ZPt",len(ZPtBins)-1,ZPtBins) for x in range(0,NW) ]
+vSum=[ 0.0 for x in range(0,NW) ]
+
 hList=[ hZPt,hZRap,hPhiStar,hLep1Pt,hLep2Pt,hLepPosPt,hLepNegPt ]
 for h in hList:
 	h.Sumw2()
@@ -40,10 +45,13 @@ def DeltaPhi(phi1,phi2):
 	while dphi > math.pi : dphi -= 2*math.pi
 	while dphi < -math.pi : dphi += 2*math.pi
 	return abs(dphi)	
+
 muMass=0.1057
 ## normalization
 Sum=0.0
+Sum2=0.0
 Fiducial=0.0
+Fiducial2=0.0
 nentries=tree.GetEntries()
 sw.Start()
 for ientry in range(0,nentries):
@@ -60,14 +68,19 @@ for ientry in range(0,nentries):
 		sw.Start()
 	tree.GetEntry(ientry)
 	Sum += tree.weight
+	Sum2 += (tree.weight**2)
+	for iw in range(0,NW): vSum[iw]  += tree.weights[iw]
+
 	if tree.pt1 < 25 or tree.pt2 <25: continue
 	if abs(tree.eta1)>2.4 or abs(tree.eta2)>2.4 : continue
 	if tree.mZ < 60 or tree.mZ >120 : continue
-	if tree.pdgId1*tree.pdgId2 != -13*13 : 
+	if tree.pdgId1*tree.pdgId2 != -11*11 : 
 		print "OPS, this should never happen"
 		continue  ## OS SF muon , only muon
 	Fiducial += tree.weight
+	Fiducial2 += (tree.weight**2)
 	hZPt.Fill(tree.ptZ, tree.weight)
+	for iw in range(0,NW): vZPt[iw].Fill(tree.ptZ, tree.weights[iw])
 	
 	## PHI STAR
 	l1=ROOT.TLorentzVector()
@@ -96,8 +109,9 @@ for ientry in range(0,nentries):
 
 print 
 print "---------------------------------------------------"
-print "Sum=",Sum,"nentries=",nentries,"xsec=",Sum/nentries
-print "Fiducial xsec=",Fiducial/nentries
+print "Sum=",Sum,"nentries=",nentries
+print "xsec=",Sum/nentries,"+/-",math.sqrt(Sum2/(nentries**2))
+print "Fiducial xsec=",Fiducial/nentries,"+/-",math.sqrt(Fiducial2/(nentries**2))
 print "---------------------------------------------------"
 
 for h in hList: 
@@ -117,13 +131,54 @@ for h in hList:
 	g.Write()
 	h.Write()
 
+gZPtSyst=ROOT.TGraphAsymmErrors()
+gZPtSyst.SetName(hZPt.GetName() + "_syst")
+
+for iw in range(0,NW): 
+	vZPt[iw].Scale(1./float(nentries))
+	vZPt[iw].Write()
+
+for ibin in range(0,hZPt.GetNbinsX()):
+	y=hZPt.GetBinContent(ibin+1)
+	x=h.GetBinCenter(ibin+1)
+	w=h.GetBinWidth(ibin+1)
+	## reset to nominal
+	up=hZPt.GetBinContent(ibin+1)
+	down=hZPt.GetBinContent(ibin+1)
+	exl=x-h.GetBinLowEdge(ibin+1) 
+	exh=h.GetBinLowEdge(ibin+2) -x
+	## envelope
+	for iw in range(0,NW): 
+		c=vZPt[iw].GetBinContent(ibin+1)
+		up = max(c, up)
+		down = min(c,down)
+	n=gZPtSyst.GetN()
+	gZPtSyst.SetPoint(n,x,y/w) ## g is divided for the bin width
+	gZPtSyst.SetPointError(n,exl,exh,(y-down)/w,(up-y)/w)
+gZPtSyst.Write()
+
 ## Save Additional informations
 S=ROOT.TNamed("Sum","%e"%Sum)
 S.Write()
+S2=ROOT.TNamed("Sum2","%e"%Sum2)
+S2.Write()
+
+vS=[ ROOT.TNamed("Sum_%d"%iw,"%e"%vSum[iw]) for iw in range(0,NW)]
+for iw in range(0,NW): vS[iw].Write()
+
 xsec=ROOT.TNamed("xsec","%e"%(Sum/nentries))
 xsec.Write()
+xsec_err=ROOT.TNamed("xsec-err","%e"%(math.sqrt(Sum2/(nentries*nentries))))
+xsec_err.Write()
 Fid=ROOT.TNamed("fiducial","%e"%(Fiducial/nentries))
 Fid.Write()
+Fid_err=ROOT.TNamed("fiducial-err","%e"%(math.sqrt(Fiducial2/(nentries*nentries))))
+Fid_err.Write()
 out.Close()
 f.Close()
 #h.Scale(1./Sum)
+
+### weights
+#1,2  = hard scale variations ( same as muR=muF variations in fixed-order QCD calculation)
+#3-8 =  resummation scale variations
+#9,10 = scale variations to be used for inclusive quantities like y_Z or M_l+l-
